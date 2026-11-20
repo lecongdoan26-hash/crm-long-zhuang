@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: crm-long-zhuang
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8
+      - key: CRM_SECRET_KEY
+        generateValue: true

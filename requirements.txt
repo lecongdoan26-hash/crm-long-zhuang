@@ -1,0 +1,3 @@
+# CRM LONG ZHUANG - Hệ Thống Quản Lý Bán Hàng & Chăm Sóc Khách Hàng
+# Ứng dụng sử dụng hoàn toàn Python Standard Library (ThreadingHTTPServer, SQLite3)
+# Không cần cài đặt package bên ngoài qua pip.

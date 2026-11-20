@@ -1,0 +1,22 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# SQLite WAL and temporary files (keep main crm_data.db for instant trial)
+*.db-wal
+*.db-shm
+*.db.bak
+backups/
+
+# Environment and OS files
+.env
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
