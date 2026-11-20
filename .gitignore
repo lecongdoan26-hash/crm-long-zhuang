@@ -15,6 +15,7 @@ backups/
 .DS_Store
 Thumbs.db
 desktop.ini
+qa_audit_results.json
 
 # IDE & Editor
 .vscode/
