@@ -311,7 +311,7 @@ class CRMRequestHandler(http.server.SimpleHTTPRequestHandler):
         return user
 
     def read_post_body(self):
-        if hasattr(self, '_cached_body'):
+        if getattr(self, '_cached_body', None) is not None:
             return self._cached_body
         length = int(self.headers.get('Content-Length', 0))
         if length == 0:
@@ -329,6 +329,7 @@ class CRMRequestHandler(http.server.SimpleHTTPRequestHandler):
         return self._cached_body
 
     def do_GET(self):
+        self._cached_body = None
         try:
             parsed = urllib.parse.urlparse(self.path)
             path = parsed.path
@@ -399,6 +400,7 @@ class CRMRequestHandler(http.server.SimpleHTTPRequestHandler):
                 super().do_GET()
 
     def do_POST(self):
+        self._cached_body = None
         try:
             # Luôn đọc cạn toàn bộ request body trước để tránh nghẽn socket HTTP keep-alive
             _ = self.read_post_body()
@@ -1161,7 +1163,10 @@ class CRMRequestHandler(http.server.SimpleHTTPRequestHandler):
         # (Nếu Sếp đăng nhập và có chỉ định nhân viên thì lấy theo Sếp chọn)
         assigned_user_id = user['id']
         if user['role'] == 'admin' and body.get('assigned_user_id'):
-            assigned_user_id = int(body.get('assigned_user_id'))
+            try:
+                assigned_user_id = int(body.get('assigned_user_id'))
+            except (ValueError, TypeError):
+                assigned_user_id = user['id']
 
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -1362,7 +1367,10 @@ class CRMRequestHandler(http.server.SimpleHTTPRequestHandler):
             addr = r.get('address', '')
             demand = r.get('demand', '')
             notes = r.get('notes', '')
-            assigned_id = int(r.get('assigned_user_id', admin['id']))
+            try:
+                assigned_id = int(r.get('assigned_user_id') or admin['id'])
+            except (ValueError, TypeError):
+                assigned_id = admin['id']
 
             cur.execute('''
             INSERT INTO customers (
@@ -1476,6 +1484,10 @@ class CRMRequestHandler(http.server.SimpleHTTPRequestHandler):
             ('30d', d30, f"Mốc {d30} ngày: Chăm sóc định kỳ tháng & chính sách mới"),
         ]
 
+        # Kiểm tra xem đơn này đã từng có care tasks chưa để tránh nhân đôi mốc
+        cur.execute("SELECT id, milestone_code FROM care_tasks WHERE order_id = ?", (order_id,))
+        existing_tasks = {r['milestone_code']: r['id'] for r in cur.fetchall()}
+
         for code, days, title in milestones:
             sched_date = (base_date + timedelta(days=days)).strftime("%Y-%m-%d")
             status = 'Chưa đến hạn'
@@ -1484,12 +1496,19 @@ class CRMRequestHandler(http.server.SimpleHTTPRequestHandler):
             elif sched_date < today_str:
                 status = 'Quá hạn'
 
-            cur.execute('''
-            INSERT INTO care_tasks (
-                order_id, customer_id, assigned_user_id, milestone_code, milestone_days,
-                milestone_title, scheduled_date, status, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (order_id, customer_id, user_id, code, days, title, sched_date, status, now_str, now_str))
+            if code in existing_tasks:
+                cur.execute('''
+                UPDATE care_tasks
+                SET scheduled_date = ?, status = ?, assigned_user_id = ?, updated_at = ?
+                WHERE id = ?
+                ''', (sched_date, status, user_id, now_str, existing_tasks[code]))
+            else:
+                cur.execute('''
+                INSERT INTO care_tasks (
+                    order_id, customer_id, assigned_user_id, milestone_code, milestone_days,
+                    milestone_title, scheduled_date, status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (order_id, customer_id, user_id, code, days, title, sched_date, status, now_str, now_str))
 
     def handle_add_order(self):
         user = self.require_auth()
@@ -1498,7 +1517,14 @@ class CRMRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         body = self.read_post_body()
         customer_id = body.get('customer_id')
-        total_amount = int(body.get('total_amount', 0))
+        try:
+            total_amount = int(str(body.get('total_amount', 0)).replace('.', '').replace(',', '').strip() or 0)
+        except (ValueError, TypeError):
+            total_amount = 0
+        if total_amount < 0:
+            self.send_json({"success": False, "field": "total_amount", "message": "Tổng tiền đơn hàng không được là số âm."}, status=400)
+            return
+
         items_text = body.get('items_text', '').strip()
         status = body.get('status', 'Mới') # 'Mới', 'Đã báo giá', 'Chốt', 'Đã giao', 'Hoàn tất'
         order_date = body.get('order_date', '').strip() or datetime.now().strftime("%Y-%m-%d")
@@ -1601,7 +1627,15 @@ class CRMRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         old_status = order['status']
         new_status = body.get('status', old_status)
-        total_amount = int(body.get('total_amount', order['total_amount']))
+        try:
+            total_amount = int(str(body.get('total_amount', order['total_amount'])).replace('.', '').replace(',', '').strip() or 0)
+        except (ValueError, TypeError):
+            total_amount = order['total_amount']
+        if total_amount < 0:
+            conn.close()
+            self.send_json({"success": False, "field": "total_amount", "message": "Tổng tiền đơn hàng không được là số âm."}, status=400)
+            return
+
         items_text = body.get('items_text', order['items_text'])
         order_date = body.get('order_date', order['order_date'])
         delivery_date = body.get('delivery_date', order['delivery_date'])
@@ -1913,6 +1947,8 @@ class CRMRequestHandler(http.server.SimpleHTTPRequestHandler):
         milestone_code = body.get('milestone_code', '5d')
         template_id = body.get('template_id')
         order_id = body.get('order_id')
+        if order_id in ('null', '', 0, '0', None):
+            order_id = None
 
         if not customer_id:
             self.send_json({"success": False, "message": "Thiếu mã khách hàng."}, status=400)
@@ -2053,7 +2089,10 @@ class CRMRequestHandler(http.server.SimpleHTTPRequestHandler):
         start_date = body.get('start_date', datetime.now().strftime("%Y-%m-%d"))
         position = body.get('position', '').strip() or ('Ban Giám Đốc' if role == 'admin' else 'Chuyên viên Kinh doanh')
         contract_type = body.get('contract_type', 'Hợp đồng 1 năm')
-        monthly_target = int(body.get('monthly_target', 150000000))
+        try:
+            monthly_target = int(str(body.get('monthly_target', 150000000)).replace('.', '').replace(',', '').strip() or 150000000)
+        except (ValueError, TypeError):
+            monthly_target = 150000000
         notes = body.get('notes', '').strip()
         avatar_color = body.get('avatar_color', '#3B5BFF')
 
@@ -2134,7 +2173,9 @@ class CRMRequestHandler(http.server.SimpleHTTPRequestHandler):
             ''', (emp_id, final_code, dob, gender, cccd, address, start_date, position, contract_type, monthly_target, notes, avatar_color))
 
             msg = f"Đã cập nhật hồ sơ nhân viên [{full_name}] thành công!"
-            log_audit(admin['id'], admin['full_name'], 'UPDATE', 'user', str(emp_id), f"Cập nhật hồ sơ nhân viên: {full_name}", self.get_client_ip())
+            audit_action = 'UPDATE'
+            audit_target_id = str(emp_id)
+            audit_desc = f"Cập nhật hồ sơ nhân viên: {full_name}"
         else:
             # Tạo nhân viên mới: Nếu để trống mật khẩu -> Sinh mật khẩu tạm ngẫu nhiên
             if not password:
@@ -2163,10 +2204,15 @@ class CRMRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             pw_notice = f" Mật khẩu khởi tạo: [{final_pw}]. Nhân viên sẽ được yêu cầu đổi mật khẩu ở lần đăng nhập đầu tiên." if generated_temp_pw else " Nhân viên sẽ được yêu cầu đổi mật khẩu ở lần đăng nhập đầu tiên."
             msg = f"Tạo mới tài khoản nhân viên [{full_name}] ({final_code}) thành công!{pw_notice}"
-            log_audit(admin['id'], admin['full_name'], 'CREATE', 'user', str(new_uid), f"Tạo mới nhân viên: {full_name} ({email})", self.get_client_ip())
+            audit_action = 'CREATE'
+            audit_target_id = str(new_uid)
+            audit_desc = f"Tạo mới nhân viên: {full_name} ({email})"
 
         conn.commit()
         conn.close()
+
+        # Gọi log_audit SAU KHI commit và đóng kết nối để tránh SQLite deadlock
+        log_audit(admin['id'], admin['full_name'], audit_action, 'user', audit_target_id, audit_desc, self.get_client_ip())
 
         self.send_json({
             "success": True,

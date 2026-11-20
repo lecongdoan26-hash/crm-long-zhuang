@@ -160,7 +160,7 @@
   <div id="toastContainer" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
 
   <!-- ==================== MODAL ĐĂNG NHẬP (FULL SCREEN NẾU CHƯA ĐĂNG NHẬP) ==================== -->
-  <div id="loginOverlay" class="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-gradient-to-br from-[#E6ECFB] via-[#EEF2FB] to-[#F5EFFB] transition-all duration-300">
+  <div id="loginOverlay" class="hidden fixed inset-0 z-[90] flex items-center justify-center p-4 bg-gradient-to-br from-[#E6ECFB] via-[#EEF2FB] to-[#F5EFFB] transition-all duration-300">
     <div class="glass-card max-w-md w-full p-8 shadow-2xl relative overflow-hidden border border-white">
       <div class="absolute -top-24 -right-24 w-48 h-48 bg-blue-400/20 rounded-full blur-3xl pointer-events-none"></div>
       <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-purple-400/20 rounded-full blur-3xl pointer-events-none"></div>
@@ -1095,7 +1095,7 @@
   <!-- ==================== CÁC MODAL HỘP THOẠI CHỨC NĂNG ==================== -->
 
   <!-- 1. MODAL "GỬI ZALO" (Tự động điền biến & Sao chép clipboard & Mở link Zalo) -->
-  <div id="zaloModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+  <div id="zaloModal" class="hidden fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
     <div class="glass-card max-w-lg w-full p-6 shadow-2xl border border-white">
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
         <div class="flex items-center gap-2">
@@ -1129,6 +1129,92 @@
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- 1.1 MODAL THÊM / SỬA KỊCH BẢN CHĂM SÓC ZALO -->
+  <div id="scriptModal" class="hidden fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+    <div class="glass-card max-w-xl w-full p-6 shadow-2xl border border-white max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h4 id="scriptModalTitle" class="font-bold text-base text-slate-900 flex items-center gap-2">
+          <i data-lucide="message-square" class="w-4 h-4 text-blue-600"></i>
+          <span>Thêm kịch bản Zalo mới</span>
+        </h4>
+        <button type="button" onclick="closeModal('scriptModal')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="event.preventDefault(); submitSaveScript();" class="mt-4 space-y-3.5">
+        <input type="hidden" id="scriptFormId">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Mốc chăm sóc <span class="text-rose-500">*</span></label>
+            <select id="scriptMilestoneCode" class="w-full px-3.5 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none" onchange="updateMilestoneTitleDefault()">
+              <option value="5d">Mốc 5 ngày (Hỏi thăm nhận hàng)</option>
+              <option value="7d">Mốc 7 ngày (Tiến độ & hao hụt)</option>
+              <option value="15d">Mốc 15 ngày (Dự toán đợt 2)</option>
+              <option value="30d">Mốc 30 ngày (Định kỳ tháng)</option>
+              <option value="custom">Mốc khác (Tùy chỉnh)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Tiêu đề mốc hiển thị</label>
+            <input id="scriptMilestoneTitle" type="text" placeholder="Ví dụ: Mốc 5 ngày" class="w-full px-3.5 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Áp dụng cho loại khách</label>
+            <select id="scriptCustomerType" class="w-full px-3.5 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none">
+              <option value="Tất cả">Tất cả loại khách</option>
+              <option value="Thầu công trình">Thầu công trình</option>
+              <option value="Đại lý bán buôn">Đại lý bán buôn</option>
+              <option value="Xưởng cơ khí">Xưởng cơ khí</option>
+              <option value="Khách lẻ">Khách lẻ</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Tên / Mục đích kịch bản <span class="text-rose-500">*</span></label>
+            <input id="scriptTitle" type="text" required placeholder="Ví dụ: Chăm sóc sau nhận hàng - Thầu lớn" class="w-full px-3.5 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-bold text-slate-700">Nội dung tin nhắn <span class="text-rose-500">*</span></label>
+            <span class="text-[11px] text-blue-600 font-semibold">Tự động gắn biến</span>
+          </div>
+          <textarea id="scriptContent" rows="6" required placeholder="Nhập mẫu tin nhắn Zalo gửi khách hàng..." class="w-full px-3.5 py-2 text-xs md:text-sm bg-white border border-slate-200 rounded-xl focus:outline-none leading-relaxed font-sans"></textarea>
+
+          <div class="mt-2 p-2.5 rounded-xl bg-blue-50/60 border border-blue-100 text-[11px] text-slate-600 space-y-1">
+            <div class="font-bold text-blue-800">Các biến tự động (bấm để chèn vào nội dung):</div>
+            <div class="flex flex-wrap gap-1.5 mt-1">
+              <button type="button" onclick="insertScriptVariable('{ten_khach}')" class="px-2 py-0.5 rounded-lg bg-white border border-blue-200 text-blue-700 font-mono text-[10px] hover:bg-blue-50">{ten_khach}</button>
+              <button type="button" onclick="insertScriptVariable('{ten_nhan_vien}')" class="px-2 py-0.5 rounded-lg bg-white border border-blue-200 text-blue-700 font-mono text-[10px] hover:bg-blue-50">{ten_nhan_vien}</button>
+              <button type="button" onclick="insertScriptVariable('{ma_don}')" class="px-2 py-0.5 rounded-lg bg-white border border-blue-200 text-blue-700 font-mono text-[10px] hover:bg-blue-50">{ma_don}</button>
+              <button type="button" onclick="insertScriptVariable('{ngay_giao}')" class="px-2 py-0.5 rounded-lg bg-white border border-blue-200 text-blue-700 font-mono text-[10px] hover:bg-blue-50">{ngay_giao}</button>
+              <button type="button" onclick="insertScriptVariable('{ten_cong_ty}')" class="px-2 py-0.5 rounded-lg bg-white border border-blue-200 text-blue-700 font-mono text-[10px] hover:bg-blue-50">{ten_cong_ty}</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+          <button type="button" id="btnDeleteScript" onclick="deleteCurrentScript()" class="hidden px-4 py-2 rounded-xl text-rose-600 hover:bg-rose-50 text-xs font-bold transition">
+            Xóa kịch bản
+          </button>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" onclick="closeModal('scriptModal')" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold transition">
+              Hủy bỏ
+            </button>
+            <button type="submit" id="btnSaveScript" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition">
+              Lưu kịch bản
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -1790,6 +1876,7 @@
         const data = await res.json();
         if (data.logged_in && data.current_user) {
           currentUser = data.current_user;
+          hideLoginOverlay();
           onLoginSuccess(currentUser);
         } else {
           showLoginOverlay();
@@ -1867,12 +1954,20 @@
     }
 
     function onLoginSuccess(user) {
+      hideLoginOverlay();
       const isAdmin = user.role === 'admin';
 
       document.querySelectorAll('.admin-only').forEach(el => {
         if (isAdmin) el.classList.remove('hidden');
         else el.classList.add('hidden');
       });
+
+      // Nạp sẵn danh sách nhân viên nếu là Sếp để sẵn sàng cho form Thêm khách / Tạo đơn
+      if (isAdmin) {
+        loadEmployees();
+      } else {
+        rawEmployees = [user];
+      }
 
       // Cập nhật Top Avatar & Tên & Ô Ban Giám Đốc
       document.getElementById('topUserName').textContent = user.full_name;
@@ -2874,10 +2969,10 @@
               </div>
 
               <div class="flex items-center gap-1.5">
-                <button onclick="openCustomerDetail(${c.id})" class="px-3 py-1.5 rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs transition">
+                <button type="button" onclick="openCustomerDetail(${c.id})" class="px-3 py-1.5 rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs transition">
                   Chi tiết
                 </button>
-                <button onclick="triggerZaloModal(null, ${c.id})" class="px-3.5 py-1.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm flex items-center gap-1 transition">
+                <button type="button" onclick="event.stopPropagation(); triggerZaloModal(null, ${c.id})" class="px-3.5 py-1.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm flex items-center gap-1 transition active:scale-95">
                   <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
                   <span>Gửi Zalo</span>
                 </button>
@@ -3205,42 +3300,214 @@
 
     function renderScriptsGrid(scripts) {
       const container = document.getElementById('scriptsGrid');
+      if (!scripts || scripts.length === 0) {
+        container.innerHTML = `<div class="col-span-1 md:col-span-2 text-center py-12 text-slate-400 text-sm">Chưa có kịch bản chăm sóc nào. Bấm nút "+ Soạn kịch bản mới" để tạo.</div>`;
+        return;
+      }
+
       container.innerHTML = scripts.map(s => `
         <div class="glass-card p-5 flex flex-col justify-between space-y-3">
           <div>
             <div class="flex items-center justify-between gap-2">
               <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700">
-                ${s.milestone_title}
+                ${escapeHtml(s.milestone_title || s.milestone_code)}
               </span>
-              <span class="text-xs text-slate-400">${s.customer_type}</span>
+              <span class="text-xs text-slate-400 font-medium">${escapeHtml(s.customer_type || 'Tất cả')}</span>
             </div>
             <h4 class="font-bold text-sm text-slate-900 mt-2">${escapeHtml(s.title)}</h4>
-            <div class="p-3 mt-2 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 leading-relaxed font-sans">
+            <div class="p-3 mt-2 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 leading-relaxed font-sans whitespace-pre-wrap">
               ${escapeHtml(s.content)}
             </div>
           </div>
           <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
             <span>Biến hỗ trợ: {ten_khach}, {ten_nhan_vien}...</span>
-            <button onclick="copyToClipboard('${escapeHtml(s.content).replace(/'/g, "\\'")}')" class="font-bold text-blue-600 hover:underline">Sao chép mẫu</button>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="openScriptEditModal(${s.id})" class="admin-only font-bold text-amber-600 hover:text-amber-700 hover:underline">Sửa mẫu</button>
+              <button type="button" onclick="copyScriptById(${s.id})" class="font-bold text-blue-600 hover:text-blue-700 hover:underline">Sao chép mẫu</button>
+            </div>
           </div>
         </div>
       `).join('');
     }
 
+    function copyScriptById(scriptId) {
+      const s = (rawScripts || []).find(item => item.id === scriptId);
+      if (!s || !s.content) {
+        showToast("Không tìm thấy nội dung kịch bản.", "error");
+        return;
+      }
+      navigator.clipboard.writeText(s.content).then(() => {
+        showToast("✓ Đã sao chép kịch bản vào bộ nhớ tạm!", "success");
+      }).catch(() => {
+        showToast("Không thể tự động sao chép, vui lòng copy thủ công.", "warning");
+      });
+    }
+
+    function openScriptEditModal(scriptId = null) {
+      const modal = document.getElementById('scriptModal');
+      const formId = document.getElementById('scriptFormId');
+      const mCode = document.getElementById('scriptMilestoneCode');
+      const mTitle = document.getElementById('scriptMilestoneTitle');
+      const cType = document.getElementById('scriptCustomerType');
+      const title = document.getElementById('scriptTitle');
+      const content = document.getElementById('scriptContent');
+      const modalTitle = document.getElementById('scriptModalTitle');
+      const delBtn = document.getElementById('btnDeleteScript');
+
+      if (scriptId) {
+        const s = (rawScripts || []).find(item => item.id === scriptId);
+        if (!s) return;
+        formId.value = s.id;
+        mCode.value = s.milestone_code || '5d';
+        mTitle.value = s.milestone_title || '';
+        cType.value = s.customer_type || 'Tất cả';
+        title.value = s.title || '';
+        content.value = s.content || '';
+        modalTitle.innerHTML = `<i data-lucide="edit" class="w-4 h-4 text-blue-600"></i> Sửa kịch bản: ${escapeHtml(s.title)}`;
+        if (delBtn) delBtn.classList.remove('hidden');
+      } else {
+        formId.value = '';
+        mCode.value = '5d';
+        mTitle.value = 'Mốc 5 ngày';
+        cType.value = 'Tất cả';
+        title.value = '';
+        content.value = '';
+        modalTitle.innerHTML = `<i data-lucide="message-square" class="w-4 h-4 text-blue-600"></i> Soạn kịch bản Zalo mới`;
+        if (delBtn) delBtn.classList.add('hidden');
+      }
+
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+      setTimeout(() => title.focus(), 100);
+    }
+
+    function updateMilestoneTitleDefault() {
+      const mCode = document.getElementById('scriptMilestoneCode').value;
+      const mTitle = document.getElementById('scriptMilestoneTitle');
+      const map = {
+        '5d': 'Mốc 5 ngày',
+        '7d': 'Mốc 7 ngày',
+        '15d': 'Mốc 15 ngày',
+        '30d': 'Mốc 30 ngày',
+        'custom': 'Mốc tùy chỉnh'
+      };
+      if (!mTitle.value || Object.values(map).includes(mTitle.value)) {
+        mTitle.value = map[mCode] || 'Mốc chăm sóc';
+      }
+    }
+
+    function insertScriptVariable(varName) {
+      const textarea = document.getElementById('scriptContent');
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = textarea.value;
+      textarea.value = text.substring(0, start) + varName + text.substring(end);
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + varName.length;
+    }
+
+    async function submitSaveScript() {
+      const formId = document.getElementById('scriptFormId').value;
+      const payload = {
+        id: formId ? parseInt(formId) : null,
+        milestone_code: document.getElementById('scriptMilestoneCode').value,
+        milestone_title: document.getElementById('scriptMilestoneTitle').value.trim() || 'Mốc chăm sóc',
+        customer_type: document.getElementById('scriptCustomerType').value,
+        title: document.getElementById('scriptTitle').value.trim(),
+        content: document.getElementById('scriptContent').value.trim()
+      };
+
+      if (!payload.title || !payload.content) {
+        showToast("Vui lòng nhập Tiêu đề và Nội dung kịch bản.", "warning");
+        return;
+      }
+
+      const saveBtn = document.getElementById('btnSaveScript');
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Đang lưu...";
+
+      try {
+        const res = await crmFetch('/api/scripts/save', {
+          method: 'POST',
+          body: payload
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message || "Đã lưu kịch bản thành công!", "success");
+          closeModal('scriptModal');
+          await loadScripts();
+        } else {
+          showToast(data.message || "Lỗi lưu kịch bản.", "error");
+        }
+      } catch (e) {
+        showToast("Lỗi kết nối máy chủ: " + e.message, "error");
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Lưu kịch bản";
+      }
+    }
+
+    async function deleteCurrentScript() {
+      const formId = document.getElementById('scriptFormId').value;
+      if (!formId) return;
+
+      if (!confirm("Bạn có chắc chắn muốn xóa mẫu kịch bản này?")) return;
+
+      try {
+        const res = await crmFetch('/api/scripts/delete', {
+          method: 'POST',
+          body: { id: parseInt(formId) }
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message || "Đã xóa kịch bản.", "success");
+          closeModal('scriptModal');
+          await loadScripts();
+        } else {
+          showToast(data.message || "Không thể xóa kịch bản.", "error");
+        }
+      } catch (e) {
+        showToast("Lỗi máy chủ khi xóa: " + e.message, "error");
+      }
+    }
+
     let currentZaloPayload = null;
-    async function triggerZaloModal(taskId, customerId, orderId = null, milestoneCode = '5d') {
+    let isRenderingZalo = false;
+
+    async function triggerZaloModal(arg1, arg2, orderId = null, milestoneCode = '5d') {
+      if (isRenderingZalo) return;
+
+      let customerId = null;
+      let taskId = null;
+
+      if (typeof arg1 === 'number' && (arg2 === undefined || arg2 === null)) {
+        customerId = arg1;
+      } else if (arg2 !== undefined && arg2 !== null) {
+        taskId = arg1;
+        customerId = arg2;
+      } else {
+        customerId = arg1;
+      }
+
+      if (!customerId) {
+        showToast("Không tìm thấy thông tin khách hàng.", "error");
+        return;
+      }
+
+      isRenderingZalo = true;
+
       try {
         const res = await crmFetch('/api/scripts/render', {
           method: 'POST',
           body: {
             customer_id: customerId,
-            order_id: orderId,
-            milestone_code: milestoneCode
+            order_id: (orderId && orderId !== 'null') ? orderId : null,
+            milestone_code: milestoneCode || '5d'
           }
         });
         const data = await res.json();
         if (!data.success) {
-          showToast(data.message, "error");
+          showToast(data.message || "Không thể tải kịch bản Zalo.", "error");
           return;
         }
 
@@ -3252,6 +3519,8 @@
         document.getElementById('zaloModal').classList.remove('hidden');
       } catch (e) {
         showToast("Lỗi chuẩn bị tin nhắn Zalo: " + e.message, "error");
+      } finally {
+        isRenderingZalo = false;
       }
     }
 
@@ -3455,6 +3724,7 @@
       ['code', 'full_name', 'phone', 'email'].forEach(clearEmpError);
 
       const id = document.getElementById('empFormId').value;
+      const targetVal = String(document.getElementById('empTarget').value || '150000000').replace(/\D/g, '');
       const payload = {
         id: id ? parseInt(id) : null,
         code: document.getElementById('empCode').value.trim(),
@@ -3466,7 +3736,7 @@
         position: document.getElementById('empPosition').value.trim(),
         dob: document.getElementById('empDob').value,
         cccd: document.getElementById('empCccd').value.trim(),
-        monthly_target: document.getElementById('empTarget').value,
+        monthly_target: parseInt(targetVal) || 150000000,
         address: document.getElementById('empAddress').value.trim()
       };
 
@@ -3495,6 +3765,14 @@
           showToast(data.message, "success");
           closeModal('employeeModal');
           await loadEmployees();
+
+          if (currentUser && currentUser.id === payload.id) {
+            currentUser.full_name = payload.full_name;
+            currentUser.phone = payload.phone;
+            currentUser.email = payload.email;
+            document.getElementById('topUserName').textContent = currentUser.full_name;
+            document.getElementById('topAvatar').textContent = currentUser.full_name.charAt(0);
+          }
 
           if (data.temporary_password) {
             document.getElementById('tempPasswordDisplay').textContent = data.temporary_password;
@@ -3725,17 +4003,30 @@
     let currentDetailCustomerId = null;
     let selectedOrderCustomer = null;
 
-    function openAddCustomerModal() {
+    async function openAddCustomerModal() {
       document.getElementById('newCustName').value = '';
       document.getElementById('newCustPhone').value = '';
       document.getElementById('newCustAddress').value = '';
       document.getElementById('newCustDemand').value = '';
       document.getElementById('newCustNotes').value = '';
 
+      if (currentUser && currentUser.role === 'admin' && (!rawEmployees || rawEmployees.length === 0)) {
+        await loadEmployees();
+      }
+
+      const empList = (rawEmployees && rawEmployees.length > 0) ? rawEmployees : (currentUser ? [currentUser] : []);
       const select = document.getElementById('newCustAssigned');
-      select.innerHTML = rawEmployees.map(e => `
-        <option value="${e.id}" ${currentUser && e.id === currentUser.id ? 'selected' : ''}>${escapeHtml(e.full_name)}</option>
+      select.innerHTML = empList.map(e => `
+        <option value="${e.id}" ${currentUser && e.id === currentUser.id ? 'selected' : ''}>${escapeHtml(e.full_name || e.username || 'Nhân viên')}</option>
       `).join('');
+
+      // Nhân viên kinh doanh chỉ phụ trách khách của mình, Sếp có thể phân bổ
+      if (currentUser && currentUser.role !== 'admin') {
+        select.value = currentUser ? currentUser.id : '';
+        select.disabled = true;
+      } else {
+        select.disabled = false;
+      }
 
       document.getElementById('addCustomerModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('newCustName').focus(), 100);
@@ -4085,7 +4376,7 @@
       }
     }
 
-    function openAddOrderModal(preselectedCustomerId = null) {
+    async function openAddOrderModal(preselectedCustomerId = null) {
       clearSelectedOrderCustomer();
       document.getElementById('newOrderCode').value = '';
       document.getElementById('newOrderAmount').value = '';
@@ -4096,13 +4387,18 @@
 
       // Populate assigned user dropdown
       const isAdmin = currentUser && currentUser.role === 'admin';
+      if (isAdmin && (!rawEmployees || rawEmployees.length === 0)) {
+        await loadEmployees();
+      }
+      const empList = (rawEmployees && rawEmployees.length > 0) ? rawEmployees : (currentUser ? [currentUser] : []);
       const select = document.getElementById('orderAssignedUserSelect');
       const hint = document.getElementById('orderAssignedUserHint');
-      select.innerHTML = rawEmployees.map(e => `
-        <option value="${e.id}" ${currentUser && e.id === currentUser.id ? 'selected' : ''}>${escapeHtml(e.full_name)} (${e.code || (e.role === 'admin' ? 'GD-01' : 'KD-0' + e.id)})</option>
+      select.innerHTML = empList.map(e => `
+        <option value="${e.id}" ${currentUser && e.id === currentUser.id ? 'selected' : ''}>${escapeHtml(e.full_name || e.username || 'Nhân viên')} (${e.code || (e.role === 'admin' ? 'GD-01' : 'KD-0' + e.id)})</option>
       `).join('');
 
       if (!isAdmin) {
+        select.value = currentUser ? currentUser.id : '';
         select.disabled = true;
         if (hint) hint.textContent = "Bạn chỉ có thể tạo đơn cho khách hàng do mình phụ trách.";
       } else {
